@@ -3,48 +3,37 @@
 #include<iostream>
 #include<glm/glm.hpp>
 #include<glm/gtx/string_cast.hpp>
-#include<glm/mat4x4.hpp>
-#include<glm/mat2x2.hpp>
-#include<glm/mat3x2.hpp>
+#include<glm/gtx/matrix_transform_2d.hpp>
 
 int main() {
-    //행렬 초기화 방법 
-    glm::vec4 v1 = { 1,0,1,-1 };
-    glm::vec4 v2 = { 1,0,1,-1 };
-    glm::vec4 v3 = { 1,0,1,-1 };
-    glm::vec4 v4 = { 1,0,1,-1 };
-    glm::mat4 m;
-    m[0] = v1; m[1] = v2; m[2] = v3; m[3] = v4;
-    std::cout << glm::to_string(m) << '\n';
-
-    glm::mat2 m2 = { 1,0,1,-1 }; //2x2 
-    std::cout << glm::to_string(m2) << '\n';
-
-    glm::mat3x2 m3 = { {1,0},{1,-1},{0,1} }; //수학적으로보면 2x3행렬이다 
-    std::cout << glm::to_string(m3) << '\n';
-
-    glm::mat2 m4_1 = { 1,0,1,-1 };
-    glm::mat2 m4_2 = { 0,1,1,-1 };
-    glm::mat2 m4_3 = m4_1 * m4_2;
-    std::cout << glm::to_string(m4_3) << '\n';
+    //1번 위치이동 
+    glm::vec3 v(5.0f, 6.0f, 1.0f);
+    glm::mat3 t(1.0f); //단위행렬 만드는 방법(대각선만 1 나머지는 0)
+    t = glm::translate(t, glm::vec2(2, 3)); //변환행렬 만드는 함수vec2값만큼 이동시키는 변환행렬
     
-    //행렬곱 순서에따른 결과가 다르다 AB != BA
-    glm::mat3 A = { {1,1,-1 },{0,2,0},{2,3,1} };
-    glm::mat3 B = { {1,0,0},{0,-1,1},{0,1,2} };
-    glm::mat3 AB = A * B;
-    glm::mat3 BA = B * A;
-    std::cout << "AB: " << glm::to_string(AB) << '\n' << "BA: " << glm::to_string(BA) << '\n';
-    
-    //역행렬
-    glm::mat2 A2 = { {4,1},{8,3} };
-    glm::mat2 A2i = glm::inverse(A2);
-    std::cout << "A inverse: " << glm::to_string(A2i) << '\n';
-    glm::mat2 I = A2 * A2i;
-    std::cout << "I: " << glm::to_string(I) << '\n';
+    v = t * v;
+    std::cout << glm::to_string(t) << '\n';
+    std::cout << glm::to_string(v) << '\n';
 
-    //행렬과 백터의 곱 
-    glm::vec3 a(1, 2, 3);
-    glm::mat3 m5 = { {1,0,0},{2,-1,0},{3,0,1} };
-    std::cout << "A * M: " << glm::to_string(a * m5) << '\n' << "M * A: " << glm::to_string(m5 * a) << '\n';
+    //2번 크기조절
+    glm::vec3 v2(5.0f, 6.0f, 1.0f);
+    glm::mat3 t2(1.0f); 
+    t2 = glm::scale(t2, glm::vec2(3, 4)); 
+    //변환행렬만드는함수 vec2값만큼 x축으로 n배 y 축으로 n배 
+    
+    v2 = t2 * v2;
+    std::cout << glm::to_string(t2) << '\n';
+    std::cout << glm::to_string(v2) << '\n';
+
+    //3번 회전
+    glm::vec3 v3(5.0f, 6.0f, 1.0f);
+    glm::mat3 t3(1.0f);
+    t3 = glm::rotate(t3, glm::radians(45.0f)); 
+    //변환행렬 만드는함수 라디안각로 변환해야함그래서 위 함수 사용 45.0f 만큼 반시계로 회전 
+    //glm 에서 모든 각도는 라디안으로 한다
+    v3 = t3 * v3;
+    std::cout << glm::to_string(t3) << '\n';
+    std::cout << glm::to_string(v3) << '\n';
+
     return 0;
 }
