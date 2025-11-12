@@ -3,11 +3,14 @@
 #define GLM_ENABLE_EXPERIMENTAL
 
 #include <iostream>
+#include<vector> //stl vector
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
-#include <fstream>
-#include <chrono>
+
+#include <fstream> //파일 읽기
+#include <chrono> //시간 체크
 
 #include "cow.h"
 #include "ppm_io.h"
@@ -15,8 +18,9 @@
 
 void convertNDCtoImage(const glm::vec4 vertexNDC, glm::vec4 vertexView, const uint32_t& imageWidth, const uint32_t& imageHeight, glm::vec3& vertexRaster)
 {
-    //code here
-
+    vertexRaster.x = (vertexNDC.x + 1.0f) / 2.0f * imageWidth;
+    vertexRaster.y = (1.0f - vertexNDC.y) / 2.0f * imageHeight;
+    vertexRaster.z = -vertexView.z;
 }
 
 
@@ -31,30 +35,44 @@ float max3(const float& a, const float& b, const float& c)
     return std::max(a, std::max(b, c));
 }
 
-
-float edge(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+//삼각형 내부 외부 판별 
+bool edge(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
 {
-    //code here
-    return 1.0;
+    return ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x) >= 0);
+}
+
+//삼각형 넓이 구하는 함수
+float area(const glm::vec3 a, const glm::vec3 b, const glm::vec3 c)
+{
+    return fabs((c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0]));
 }
 
 glm::mat4 lookAt(glm::vec3 pos, glm::vec3 look, glm::vec3 up)
 {
     glm::mat4 viewMatrix(1.0f);
+    glm::vec3 z = glm::normalize(pos - look);
+    glm::vec3 x = glm::normalize(glm::cross(up, z));
+    glm::vec3 y = glm::normalize(glm::cross(z, x));
 
-    //code here
+    viewMatrix = glm::translate(viewMatrix, -pos);
 
+    glm::mat4 rota = { glm::vec4(x.x, y.x, z.x, 0.0f),
+    glm::vec4(x.y, y.y, z.y, 0.0f),
+    glm::vec4(x.z, y.z, z.z, 0.0f),
+    glm::vec4(0.0f, 0.0f, 0.0f, 1.0f) };
+
+    viewMatrix= rota* viewMatrix;
     return viewMatrix;
-
 }
 
 glm::mat4 perspective(float fovy, float aspect, float near, float far)
 {
-
-    glm::mat4 projection(1.0f);
-
-    //code here
-
+    glm::mat4 projection(0.0f);
+    projection[0][0] = 1.0f / (aspect * glm::tan(glm::radians(fovy) / 2.0f));
+    projection[1][1] = 1.0f / (glm::tan(glm::radians(fovy) / 2.0f));
+    projection[2][2] = -(far + near) / (far - near);
+    projection[2][3] = -1.0f;
+    projection[3][2] = -(2.0f * far * near) / (far - near);
     return projection;
 
 }
@@ -86,6 +104,7 @@ int main(int argc, char** argv)
         uint8_t r, g, b;
     };
 
+    //이미지를 저장하기위한 프레임버퍼 frameBuffer
     std::vector <rgb>  frameBuffer;
     frameBuffer.resize(imageWidth * imageHeight);
 
@@ -96,6 +115,7 @@ int main(int argc, char** argv)
         frameBuffer[i].b = 0;
     }
 
+    //깊이버퍼(겹칠경우 사용)
     float* depthBuffer = new float[imageWidth * imageHeight];
 
     for (uint32_t i = 0; i < imageWidth * imageHeight; ++i) {
@@ -104,51 +124,65 @@ int main(int argc, char** argv)
 
     auto t_start = std::chrono::high_resolution_clock::now();
 
+    //삼각형 꼭짓점 1 2 3 번째 뽑기 반복문 여기서부터 시작 
     for (uint32_t i = 0; i < ntris; ++i) {
-
-        const glm::vec3& v0 = vertices[nvertices[i * 3]];
+        //로컬(모델)좌표 (*아직 월드로 옮기지않은 모델좌표*)
+        const glm::vec3& v0 = vertices[nvertices[i * 3]]; //cow 헤더파일에 있는 좌표값 가져옴 
         const glm::vec3& v1 = vertices[nvertices[i * 3 + 1]];
         const glm::vec3& v2 = vertices[nvertices[i * 3 + 2]];
+        //std::cout << glm::to_string(v0) << glm::to_string(v1) << glm::to_string(v2) << std::endl << std::endl;
 
-
+        //모델행렬 (위치 옮기는걸 그냥 가정 하고 그래서 그냥 단위행렬) 로컬->글로벌
         glm::mat4 modelMatrix(1.0f);
-
-        glm::mat4 viewMatrix = lookAt(glm::vec3(20, 10, 20), glm::vec3(0, 5, 0), glm::vec3(0, 1, 0));
-
+        //뷰행렬 글로벌->카메라 lookAt 구현한걸로 만듦
+        // 20 , 10 , 20 이 원래 좌표 
+        glm::mat4 viewMatrix = lookAt(glm::vec3(40, 10, 20), glm::vec3(0, 5, 0), glm::vec3(0, 1, 0));
+        //모델뷰행렬 로컬->카메라 (모델 뷰 행렬 곱해서 만듦)
         glm::mat4 modelViewMatrix = viewMatrix * modelMatrix;
 
-        //Camera(view) coordinates
+        //Camera(view) coordinates 선언 
         glm::vec4 v0e;
         glm::vec4 v1e;
         glm::vec4 v2e;
 
-        //Code here (calculate v0e, v1e, v2e here)
+        //모델 뷰 행렬 * 로컬좌표계 계산하면서 값을 넣어줌 (로컬좌표계 v0~v2 vec 3에서 동차좌표계로 만들어주는 과정) 
+        v0e = modelViewMatrix * glm::vec4(v0, 1.0f);
+        v1e = modelViewMatrix * glm::vec4(v1, 1.0f);
+        v2e = modelViewMatrix * glm::vec4(v2, 1.0f);
+        //std::cout <<"View: " << glm::to_string(v0e) << glm::to_string(v1e) << glm::to_string(v2e) << std::endl << std::endl;
 
-
+        //perspective 함수로 구함 
         glm::mat4 projection = perspective((45.0f), imageWidth / (float)imageHeight, nearClippingPlane, farClippingPLane);
 
-
-
-        //Clip coodinates
+        //Clip coodinates 선언 
         glm::vec4 v0c, v1c, v2c;
 
-        //Code here (calculate v0c, v1c, v2c here)
-
-
+        //클립= 프로젝션행렬 * 뷰좌표계 구해줌  
+        v0c = projection * v0e;
+        v1c = projection * v1e;
+        v2c = projection * v2e;
+        //std::cout <<"Clip: " << glm::to_string(v0c) << glm::to_string(v1c) << glm::to_string(v2c) << std::endl << std::endl;
 
         //Perspective division (divide v0c.x, v0c.y, v0c.z by v0c.w   (same to v1c, v2c)
+        //x y z 를 w 로 나누어줌 Perspective division 과정 
+        
+        // 모든 좌표값을 [-1, 1] 로 바꾸기 위해 : NDC 
 
-        //Code here
-
+        v0c.x /= v0c.w; v0c.y /= v0c.w; v0c.z /= v0c.w;
+        v1c.x /= v1c.w; v1c.y /= v1c.w; v1c.z /= v1c.w;
+        v2c.x /= v2c.w; v2c.y /= v2c.w; v2c.z /= v2c.w;
+        //NDC 좌표계로 변경 완료 : v0c, v1c, v2c 
+        //std::cout <<"NDC: " << glm::to_string(v0c) << glm::to_string(v1c) << glm::to_string(v2c) << std::endl << std::endl;
 
 
         glm::vec3 v0Raster, v1Raster, v2Raster;
         convertNDCtoImage(v0c, v0e, imageWidth, imageHeight, v0Raster);
         convertNDCtoImage(v1c, v1e, imageWidth, imageHeight, v1Raster);
         convertNDCtoImage(v2c, v2e, imageWidth, imageHeight, v2Raster);
-
+        //std::cout <<"Image: "<< glm::to_string(v0Raster) << glm::to_string(v1Raster) << glm::to_string(v2Raster) << std::endl;
       
-
+        //레스터라이제이션 
+        //bounding box
         float xmin = min3(v0Raster.x, v1Raster.x, v2Raster.x);
         float ymin = min3(v0Raster.y, v1Raster.y, v2Raster.y);
         float xmax = max3(v0Raster.x, v1Raster.x, v2Raster.x);
@@ -163,53 +197,61 @@ int main(int argc, char** argv)
 
 
         //calculat the area of triangle  (area)
-        float area = edge(v0Raster, v1Raster, v2Raster);
+        float total = area(v0Raster, v1Raster, v2Raster);
+        //딥스 버퍼 값 
+        v0Raster.z = 1.0f / v0Raster.z;
+        v1Raster.z = 1.0f / v1Raster.z;
+        v2Raster.z = 1.0f / v2Raster.z;
 
+        //삼각형 민 맥스값 바운더리 반복문  
         for (uint32_t y = y0; y <= y1; ++y) {
             for (uint32_t x = x0; x <= x1; ++x) {
 
+                //픽셀의 정가운대를 테스트하기위해 0.5 더해줌 
                 glm::vec3 pixelSample(x + 0.5, y + 0.5, 0);
 
                 //calculate the areas of  three suvdivided triangles
 
-                float w0 = edge(v1Raster, v2Raster, pixelSample); //w0
-                float w1 = edge(v2Raster, v0Raster, pixelSample); //w1
-                float w2 = edge(v0Raster, v1Raster, pixelSample); //w2
+                //엣지 함수 벡터의 왼 오 판별 다트루 -> 삼각형내부 
+                bool w0 = edge(v1Raster, v2Raster, pixelSample); //w0
+                bool w1 = edge(v2Raster, v0Raster, pixelSample); //w1
+                bool w2 = edge(v0Raster, v1Raster, pixelSample); //w2
 
+                //삼각형 내부 외부 판별 if
+                if (w0 == true && w1 == true && w2 == true) { //inside
 
-                if (w0 >= 0 && w1 >= 0 && w2 >= 0) { //inside
-
-                    
+                    float a0 = area(v0Raster, v1Raster,pixelSample);
+                    float a1 = area(v1Raster, v2Raster, pixelSample);
+                    float a2 = area(v2Raster, v0Raster, pixelSample);
                     //calculate the ratio here
-                    w0 /= area;
-                    w1 /= area;
-                    w2 /= area;
+                    //면적비 구하는것 
+                    a0 /= total;
+                    a1 /= total;
+                    a2 /= total;
 
                     //calculate the z of pixelSample
-                    float z;
+                    float oneOverZ = v0Raster.z * a0 + v1Raster.z * a1 + v2Raster.z * a2;
+                    float z = 1.0f / oneOverZ;
 
-
-                    //code here
-
-
-                    
+                    //깊이 비교 뎁스 버퍼의 값과 비교 
+                    // depth버퍼에는 해당 픽셀의 가장 가까운 거리값(카메라까지의)이 들어있음 
                     if (z < depthBuffer[y * imageWidth + x]) {
-
+                        //더 가깝다면 -> 즉 앞이라면 뎁스버퍼 값 새로 할당, 해당 픽셀에 새로운 색 추가  
                         depthBuffer[y * imageWidth + x] = z;
-
-
                         //calculate normal vector from v0e, v1e, v2e
-
-                        glm::vec3 n;
-                        
-
+                        //normal>1 
+                        glm::vec3 n = glm::normalize(glm::cross(glm::vec3(v1e - v0e), glm::vec3(v2e - v0e)));
+                        n.x = (n.x + 1.0f) / 2.0f;
+                        n.y = (n.y + 1.0f) / 2.0f;
+                        n.z = (n.z + 1.0f) / 2.0f;
+                        // n-> x y z 가 모두 -1~1 사이 -> 0~1 사이로 바꿔야함 
                         frameBuffer[y * imageWidth + x].r = n.x * 255;
                         frameBuffer[y * imageWidth + x].g = n.y * 255;
                         frameBuffer[y * imageWidth + x].b = n.z * 255;
                     }
                 }
-            }
-        }
+            } //안쪽 for loop
+        } //바깥쪽 for loop
     }
 
     auto t_end = std::chrono::high_resolution_clock::now();
