@@ -11,7 +11,7 @@ endif()
 
 
 set(PROJECT_NAME lab)
-
+add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
 find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(gl3w CONFIG REQUIRED)
