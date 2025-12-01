@@ -16,6 +16,7 @@
 #include "ppm_io.h"
 
 
+//원점 기준인 점들(-1~1사이)을 모두 0~1 사이 값으로 이동시켜주는과정 == 모두 더하기1-> 0~2사이값-> 나누기2 -> 모두0~1사이값
 void convertNDCtoImage(const glm::vec4 vertexNDC, glm::vec4 vertexView, const uint32_t& imageWidth, const uint32_t& imageHeight, glm::vec3& vertexRaster)
 {
     vertexRaster.x = (vertexNDC.x + 1.0f) / 2.0f * imageWidth;
@@ -89,7 +90,6 @@ const float farClippingPLane = 1000;
 
 int main(int argc, char** argv)
 {
-  
     glm::mat4 worldToCamera = glm::lookAt(glm::vec3(20, 10, 20), glm::vec3(0, 5, 0), glm::vec3(0, 1, 0));
 
     float t, b, l, r;
@@ -136,7 +136,7 @@ int main(int argc, char** argv)
         glm::mat4 modelMatrix(1.0f);
         //뷰행렬 글로벌->카메라 lookAt 구현한걸로 만듦
         // 20 , 10 , 20 이 원래 좌표 
-        glm::mat4 viewMatrix = lookAt(glm::vec3(40, 10, 20), glm::vec3(0, 5, 0), glm::vec3(0, 1, 0));
+        glm::mat4 viewMatrix = lookAt(glm::vec3(20, 10, 20), glm::vec3(0, 5, 0), glm::vec3(0, 1, 0));
         //모델뷰행렬 로컬->카메라 (모델 뷰 행렬 곱해서 만듦)
         glm::mat4 modelViewMatrix = viewMatrix * modelMatrix;
 
@@ -149,7 +149,6 @@ int main(int argc, char** argv)
         v0e = modelViewMatrix * glm::vec4(v0, 1.0f);
         v1e = modelViewMatrix * glm::vec4(v1, 1.0f);
         v2e = modelViewMatrix * glm::vec4(v2, 1.0f);
-        //std::cout <<"View: " << glm::to_string(v0e) << glm::to_string(v1e) << glm::to_string(v2e) << std::endl << std::endl;
 
         //perspective 함수로 구함 
         glm::mat4 projection = perspective((45.0f), imageWidth / (float)imageHeight, nearClippingPlane, farClippingPLane);
@@ -161,26 +160,21 @@ int main(int argc, char** argv)
         v0c = projection * v0e;
         v1c = projection * v1e;
         v2c = projection * v2e;
-        //std::cout <<"Clip: " << glm::to_string(v0c) << glm::to_string(v1c) << glm::to_string(v2c) << std::endl << std::endl;
 
         //Perspective division (divide v0c.x, v0c.y, v0c.z by v0c.w   (same to v1c, v2c)
-        //x y z 를 w 로 나누어줌 Perspective division 과정 
-        
+        //x y z 를 w 로 나누어줌 Perspective division 과정
         // 모든 좌표값을 [-1, 1] 로 바꾸기 위해 : NDC 
 
         v0c.x /= v0c.w; v0c.y /= v0c.w; v0c.z /= v0c.w;
         v1c.x /= v1c.w; v1c.y /= v1c.w; v1c.z /= v1c.w;
         v2c.x /= v2c.w; v2c.y /= v2c.w; v2c.z /= v2c.w;
         //NDC 좌표계로 변경 완료 : v0c, v1c, v2c 
-        //std::cout <<"NDC: " << glm::to_string(v0c) << glm::to_string(v1c) << glm::to_string(v2c) << std::endl << std::endl;
-
 
         glm::vec3 v0Raster, v1Raster, v2Raster;
         convertNDCtoImage(v0c, v0e, imageWidth, imageHeight, v0Raster);
         convertNDCtoImage(v1c, v1e, imageWidth, imageHeight, v1Raster);
         convertNDCtoImage(v2c, v2e, imageWidth, imageHeight, v2Raster);
-        //std::cout <<"Image: "<< glm::to_string(v0Raster) << glm::to_string(v1Raster) << glm::to_string(v2Raster) << std::endl;
-      
+
         //레스터라이제이션 
         //bounding box
         float xmin = min3(v0Raster.x, v1Raster.x, v2Raster.x);
@@ -220,9 +214,9 @@ int main(int argc, char** argv)
                 //삼각형 내부 외부 판별 if
                 if (w0 == true && w1 == true && w2 == true) { //inside
 
-                    float a0 = area(v0Raster, v1Raster,pixelSample);
-                    float a1 = area(v1Raster, v2Raster, pixelSample);
-                    float a2 = area(v2Raster, v0Raster, pixelSample);
+                    float a0 = area(v1Raster, v2Raster, pixelSample);
+                    float a1 = area(v2Raster, v0Raster, pixelSample);
+                    float a2 = area(v0Raster, v1Raster, pixelSample);
                     //calculate the ratio here
                     //면적비 구하는것 
                     a0 /= total;
@@ -238,13 +232,14 @@ int main(int argc, char** argv)
                     if (z < depthBuffer[y * imageWidth + x]) {
                         //더 가깝다면 -> 즉 앞이라면 뎁스버퍼 값 새로 할당, 해당 픽셀에 새로운 색 추가  
                         depthBuffer[y * imageWidth + x] = z;
+                        
                         //calculate normal vector from v0e, v1e, v2e
-                        //normal>1 
+                        //normal>1
                         glm::vec3 n = glm::normalize(glm::cross(glm::vec3(v1e - v0e), glm::vec3(v2e - v0e)));
                         n.x = (n.x + 1.0f) / 2.0f;
                         n.y = (n.y + 1.0f) / 2.0f;
                         n.z = (n.z + 1.0f) / 2.0f;
-                        // n-> x y z 가 모두 -1~1 사이 -> 0~1 사이로 바꿔야함 
+                        // n-> x y z 가 모두 -1~1 사이 -> 0~1 사이로 바꿔야함
                         frameBuffer[y * imageWidth + x].r = n.x * 255;
                         frameBuffer[y * imageWidth + x].g = n.y * 255;
                         frameBuffer[y * imageWidth + x].b = n.z * 255;
@@ -253,7 +248,6 @@ int main(int argc, char** argv)
             } //안쪽 for loop
         } //바깥쪽 for loop
     }
-
     auto t_end = std::chrono::high_resolution_clock::now();
     auto passedTime = std::chrono::duration<double, std::milli>(t_end - t_start).count();
     std::cerr << "Wall passed time: " << passedTime << "ms" << std::endl;
