@@ -127,8 +127,6 @@ void MyGlWindow::setupBuffer()
 
 	//NON-DSA (Direct State Access) 방법(포지션, 칼라 같이 처리)
 	/*
-	
-
 	//1. vao 바인딩 방법 까먹지 말기 
 	glGenVertexArrays(1, &vaohandle); //컨테이너생성
 	glBindVertexArray(vaohandle); // binding
