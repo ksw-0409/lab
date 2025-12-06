@@ -2,9 +2,7 @@
 
 //cpu로 부터 받은 속성 0번의 입력을 vec4로 받음
 layout(location = 0) in vec4 vertexPosition;
-//cpu로 부터 받은 속성 1번의 입력을 vec3로 받음
-layout(location = 1) in vec3 vertexColor;
-
+layout(location = 1) in vec3 normalColor;
 //uniform mat4 model;
 //uniform mat4 view;
 //uniform mat4 projection;
@@ -25,6 +23,6 @@ void main()
     //gl_Position=projection *view*model*vertexPosition;
     gl_Position=mvp*vertexPosition;
 
-    fColor=vertexColor;
+    fColor =  (normalColor + vec3(1, 1, 1))*0.5f;
 
 }

@@ -2,7 +2,6 @@
 #define GLM_ENABLE_EXPERIMENTAL 
 #pragma once
 
-class Viewer;
 
 /**
  * \brief A class to control the viewing parameters.

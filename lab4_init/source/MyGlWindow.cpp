@@ -31,7 +31,7 @@ void MyGlWindow::setAspect(float aspect) {
 }
 void MyGlWindow::initialize()
 {
-	m_cube = std::make_unique<ColorCube>();
+	m_cow = std::make_unique<cow>();
 }
 
 
@@ -41,7 +41,7 @@ void MyGlWindow::setupBuffer()
 	glEnable(GL_DEPTH_TEST);
 	shaderProgram = std::make_unique<ShaderProgram>();
 	shaderProgram->initFromFiles("shaders/simple.vert", "shaders/simple.frag");
-	if (m_cube) m_cube->setup();
+	if (m_cow) m_cow->setup();
 	//shaderProgram->addUniform("model");
 	//shaderProgram->addUniform("view");
 	//shaderProgram->addUniform("projection");
@@ -74,7 +74,7 @@ void MyGlWindow::draw(void)
 	glm::mat4 mvp = projection * view * model;
 	glUniformMatrix4fv(shaderProgram->uniform("mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
 
-	if (m_cube) m_cube->draw();
+	if (m_cow) m_cow->draw();
 	shaderProgram->disable();
 
 	//4. Ω¶¿Ã¥ı disable 

@@ -4,7 +4,7 @@
 #include <GL/gl3w.h>
 #include <string>
 #include "Loader.h"
-#include"colorCube.h"
+#include"cow.h"
 #include"Viewer.h"
 
 
@@ -17,7 +17,7 @@ public:
 	void setSize(int width,int height);
 	void setAspect(float aspect);
 private:
-	std::unique_ptr<ColorCube> m_cube;	
+	std::unique_ptr<cow> m_cow;	
 	std::unique_ptr<ShaderProgram> shaderProgram;
 	int m_width;
 	int m_height;
